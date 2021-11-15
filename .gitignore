@@ -1,0 +1,117 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+packrat/
+bower_components/
+./data/processed/data_and_model_random_forest_55kHz_cuts.RDS
+bitacoras/
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000001.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000015.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000009.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000003.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000007.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000011.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000005.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000004.WAV # large file
+data/processed/RDS_autodetecT0000001-1.wav.RDS # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000002.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000008.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000014.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000010.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000006.WAV # large file
+data/raw/recordings/A_AMPH_15-45 _estres_parte2/T0000012.WAV # large file
+data/processed/RDS_autodetec_2/T0000005-22.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-23.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-16.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-30.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-24.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-27.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-13.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-31.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-27.RDS # large file
+data/processed/RDS_autodetec_2/T0000012-6.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-17.RDS # large file
+data/processed/RDS_autodetec_2/T0000012-2.RDS # large file
+data/processed/RDS_autodetec_2/T0000008-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-4.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-16.RDS # large file
+data/processed/RDS_autodetec_2/T0000014-6.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-2.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-26.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-2.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-20.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-17.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-28.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000004-15.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-12.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-15.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-1.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-4.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-19.RDS # large file
+data/processed/RDS_autodetec_2/T0000014-1.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-17.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-24.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-30.RDS # large file
+data/processed/RDS_autodetec_2/T0000002-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000004-4.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-2.RDS # large file
+data/processed/autodetec_v01.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-27.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-3.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000014-2.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-8.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-30.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-16.RDS # large file
+data/processed/RDS_autodetec_2/T0000008-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-12.RDS # large file
+data/processed/RDS_autodetec_2/T0000006-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-23.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-11.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-20.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-12.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-13.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-35.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-2.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-8.RDS # large file
+data/processed/RDS_autodetec_2/T0000010-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-31.RDS # large file
+data/processed/RDS_autodetec_2/T0000003-8.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-20.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-16.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-12.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-1.RDS # large file
+data/processed/RDS_autodetec_2/T0000005-4.RDS # large file
+data/processed/RDS_autodetec_2/T0000010-9.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-31.RDS # large file
+data/processed/RDS_autodetec_2/T0000004-8.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-39.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-13.RDS # large file
+data/processed/RDS_autodetec_2/T0000011-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-24.RDS # large file
+data/processed/RDS_autodetec_2/T0000004-11.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-6.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-28.RDS # large file
+data/processed/RDS_autodetec_2/T0000002-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-30.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-23.RDS # large file
+data/processed/RDS_autodetec_2/T0000001-28.RDS # large file
+data/processed/RDS_autodetec_2/T0000009-23.RDS # large file
+data/processed/RDS_autodetec_2/T0000007-27.RDS # large file
+data/processed/RDS_autodetec_2/T0000006-5.RDS # large file
+data/processed/RDS_autodetec_2/T0000013-1.RDS # large file
+data/processed/RDS_autodetec_2/T0000015-9.RDS # large file
+data/processed/autodetec_opt/envelopes_from_autodetec_all_sound_files_T0000005-T0000013-T0000015100th.RDS # large file
+data/processed/RDS_autodetec_2/T0000010-11.RDS # large file
+deprecated/T0000003.WAV # large file
+deprecated/T0000002.WAV # large file
+deprecated/T0000004.WAV # large file
+deprecated/T0000001.WAV # large file
+data/processed/RDS_autodetec_2/T0000006-11.RDS # large file
+data/processed/data_and_model_random_forest_55kHz_cuts.RDS

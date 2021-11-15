@@ -1,0 +1,2 @@
+﻿Begin Time (s),End Time (s),Begin File,Selection,View,Channel,type,subtype,channel
+1348.4416,1348.4722,T000007,1,Spectrogram 1,1,50,1,1

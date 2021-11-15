@@ -1,0 +1,189 @@
+---
+title: <center><font size="6"><b>Manual de detección automatica de vocalizaciones de ratas en <i>R</i></b></font></center>
+author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo
+  Araya-Salas, PhD</a></font></center>
+subtitle: <center><font size="4"><b>Centro de Investigación en Neurociencias</b></font></center>
+date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: kable
+toc-title: "Contenidos"
+fontsize: 12pt
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
+
+## add 'developer/' to packages to be installed from github
+x <- c("devtools", "maRce10/ohun", "kableExtra", "formatR")
+
+aa <- lapply(x, function(y) {
+  
+  # get pakage name
+  pkg <- strsplit(y, "/")[[1]]
+  pkg <- pkg[length(pkg)]
+  
+  # check if installed, if not then install 
+  if (!pkg %in% installed.packages()[,"Package"])  {
+
+      if (grepl("/", y))  devtools::install_github(y, force = TRUE) else
+    install.packages(y) 
+    }
+
+  # load package
+  try(require(pkg, character.only = T), silent = T)
+})
+
+knitr::opts_chunk$set(tidy = TRUE, fig.align='center', tidy.opts=list(width.cutoff=50))
+
+ruta_archivos <- "~/Dropbox/Recordings/ratas_cin/recs/5-min_clips_no_bedding/"
+```
+
+---
+
+Este manual describe los pasos necesarios para la detección automática de vocalizaciones de ratas. La deteccion se lleva a cabo usando como herramienta principal el paquete de R [ohun](https://marce10.github.io/ohun/index.html), el cual facilita la detección automática de señales acústicas proporcionando funciones para diagnosticar y optimizar las rutinas de detección. 
+
+Primero debemos instalar y cargar el paquete [ohun](https://marce10.github.io/ohun/index.html):
+```{r, eval = FALSE}
+
+# instalar
+devtools::install_github("maRce10/ohun")
+
+# cargar
+library(ohun)
+```
+
+
+## Preparar los archivos de audio
+
+Siempre es importante asegurarse que los archivos de audio pueden ser leidos en R. Esto lo podemos hacer así:
+
+```{r, eval = FALSE}
+
+# definir ruta
+ruta_archivos <- "RUTA DONDE SE ENCUENTRAN LOS ARCHIVOS"
+
+# revisar archivos
+check_wavs(path = ruta_archivos)
+
+```
+
+```{r, eval = TRUE, echo=FALSE}
+
+check_wavs(path = ruta_archivos)
+
+```
+
+
+Si todo está bien, el mensaje devuelve el mensaje "All files can be read". Note que el argumento `path` debe ser usado para indicar el directorio que contiene los archivos de audio. Este argumento sera usado por la mayoria de las funciones y es buena idea definir un valor desde el inicio.
+
+Las rutinas de detección que se detallan en este manual pueden tomar un tiempo considerable en aplicarse (e.g. > 1 hora). Esto debido a que las grabaciones de sonidos ultrasónicos tienen tasas de muestreo muy altas, lo que hace que los archivos sean muy pesados. Una forma de mejorar la velocidad de la detección es reducir la tasa de muestreo de los archivos. Para las vocalizaciones de ratas una tasa de muestreo de 200 kHz es suficiente para que las llamadas sean registradas con precisión. Podemos bajar la tasa de muestreo de esta forma:  
+```{r, eval = FALSE}
+
+# cambiar tasa de muestreo
+fix_wavs(samp.rate = 200, path = ruta_archivos)
+
+```
+
+Si desconocemos la tasa de muestreo actual de nuestros archivos podemos revisarla de esta forma:
+
+```{r, eval = FALSE}
+
+# ver informacion de archivos
+wav_info(path = ruta_archivos)
+
+```
+
+```{r, eval = TRUE, echo=FALSE}
+
+# ver informacion de archivos
+wav_info(path = ruta_archivos)[1:4,]
+
+```
+
+&nbsp;
+
+Los archivos de audio de larga duración (20 min o mas) pueden generar problemas durante la detección (noten que este atributo también se puede revisar con `wav_info()`). En estos casos es recomendable segmentarlos en archivos de menor duración. Esto lo podemos hacer de la siguiente forma:
+```{r, eval = FALSE}
+
+# dividir en segmentos de 5 min
+metadatos_nuevos_archivos <- split_sound_files(sgmt.dur = 5 * 60, path = ruta_archivos)
+
+```
+
+El código anterior divide todos los archivos de audio en archivos de 5 minutos. El objeto `metadatos_nuevos_archivos` que se produjo contiene los nombres de los nuevos archivos así como de cual archivo provienen.
+
+
+## Detección automática de llamados ultrasónicos
+
+La actividad de investigacion en la que se desarrollaron las rutinas de deteccion que se muestran a continuacion, tambien permitio indetificar los parametros de ajuste ("tuning parameters") que optimizan la deteccion para diferentes contextos experimentales (prueba de jaula y campo abierto) y categorias de vocalizaciones (22 y 55 kHz). Este tutorial se limita a presentar las funciones utilizadas para la deteccion en estos diferentes escenarios junto con los parametros de ajuste que produjeron el mejor desempeño en cada escenario.
+
+La detección automática se lleva a cabo por medio de dos procesos: 
+
+  1. Detección de sonidos con umbrales de energía: para una descripción detallada de este método ver el [caso de estudio del paquete ohun](https://marce10.github.io/ohun/articles/ohun.html). La detección se lleva a acabo con la función [`energy_detector()`](https://marce10.github.io/ohun/reference/energy_detector.html). 
+  
+  
+  1. Filtrado de los sonidos detectados con *Random Forest*: este paso toma las detecciones producidas en el primer paso junto con medidas de su estructura acustica (e.g. duracion, frequencia, distribucion de energia) y genera un modelo que distingue las llamadas ultrasonicas del ruido de fondo. En otras palabras filtra las señales de interes de otros sonidos no deseados. 
+  
+
+### Vocalizaciones de 55 kHz campo abierto 
+
+Detección con umbrales de energía:    
+
+```{r, eval = FALSE}
+
+# measure spectrographic parameters
+parametros_acusticos <- spectro_analysis(filter_ed_all, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 1)
+
+deteccion <- energy_detector(threshold = 0.01, min.duration = 1, ssmooth = 5, hold.time = 5, path = ruta_archivos, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 15)
+
+```
+
+Medicion de parametros acusticos para el Random Forest:
+```{r, eval = FALSE}
+
+parametros_acusticos <- spectro_analysis(deteccion, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 1, path = ruta_archivos)
+
+```
+
+Clasificación con Random Forest:
+```{r, eval = FALSE}
+
+## leer el modelo del repositorio de github
+clasificador_rf <- readRDS("")
+
+# aplicarlo sobre las detecciones nuevas
+deteccion$clase <-predict(clasificador_rf, parametros_acusticos, type = "terminalNodes")$predictions
+
+# remover los sonidos clasificados como ruido de fondo 
+detecion_filtrada <- deteccion[deteccion$clase == "true.positive", ]
+
+```
+
+El objeto resultante (`detecion_filtrada`) es un cuadro de datos ("data.frame") con la posición en el tiempo de las vocalizaciones detectadas para cada uno de los archivos de audio en la ruta proporcionada. Tiene una estructura similar a esta:
+
+```{r, echo=FALSE}
+
+lbh_selec_reference[1:6´, 1:5]
+
+```
+
+&nbsp;
+
+
+
+Las rutinas se pueden correr usando el argumento `parallel`, el cual se encuentra en varias de las funciones mostradas. Este define el número de núcleos de la computadora ("cores") que se usarán para correr las diferentes funciones. Valores mayores a uno paralelizan las rutinas (corren varias tareas a la vez), reduciendo el tiempo de análisis.
+ 
+---
+
+<font size="4">Información de la sesión de R</font>
+
+```{r session info, echo=F, eval = TRUE}
+
+sessionInfo()
+
+```

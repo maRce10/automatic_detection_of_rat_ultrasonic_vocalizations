@@ -1,0 +1,517 @@
+---
+title: <center><font size="6"><b>Detecting 55 kHz USVs with bedding</b></font></center>
+subtitle: <center><font size="4"><b>Rat ultrasonic vocalizations</b></font></center>
+author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo Araya-Salas, PhD</a></font></center>
+date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    df_print: kable
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+fontsize: 12pt 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
+
+## add 'developer/' to packages to be installed from github
+x <- c("devtools", "maRce10/warbleR", "bioacoustics", "pbapply", "Rraven", "parallel", "viridis", "rfigshare", "svMisc", "readxl", "ranger", "kableExtra", "DT", "maRce10/ohun", "ggplot2")
+
+aa <- lapply(x, function(y) {
+  
+  # get pakage name
+  pkg <- strsplit(y, "/")[[1]]
+  pkg <- pkg[length(pkg)]
+  
+  # check if installed, if not then install 
+  if (!pkg %in% installed.packages()[,"Package"])  {
+
+      if (grepl("/", y))  devtools::install_github(y, force = TRUE) else
+    install.packages(y) 
+    }
+
+  # load package
+  try(require(pkg, character.only = T), silent = T)
+})
+
+```
+
+```{r functions and global parameters, eval = TRUE, echo = FALSE}
+
+warbleR_options(
+  wav.path = "~/Dropbox/Recordings/ratas_cin/recs/200_kHz_bedding/"
+)
+
+
+opts_knit$set(root.dir = "..")
+
+source("~/Dropbox/R_package_testing/ohun/R/split_acoustic_data.R")
+source("~/Dropbox/R_package_testing/warbleR/warbleR/R/overlapping_sels.R")
+source("~/Dropbox/R_package_testing/warbleR/warbleR/R/pblapply_wrblr_int.R")
+source("~/Dropbox/R_package_testing/ohun/R/label_detection.R")
+source("~/Dropbox/R_package_testing/ohun/R/filter_detection.R")
+source("~/Dropbox/R_package_testing/warbleR/warbleR/R/overlapping_sels.R")
+
+merged_overlaps <- function(X){
+  
+  # merged overlapping selections
+  ov_sls <- overlapping_sels(X)
+  
+  ov_sls <- do.call(rbind, lapply(unique(ov_sls$ovlp.sels), function(x){
+         
+    if (!is.na(x)){
+       
+       Y <- ov_sls[ov_sls$ovlp.sels == x & !is.na(ov_sls$ovlp.sels), ]
+       Y$end[1] <- max(Y$end)
+       Y$bottom.freq[1] <- min(Y$bottom.freq)
+       Y$top.freq[1] <- max(Y$top.freq)
+       Y <- Y[1, ]
+       } else
+        Y <- ov_sls[is.na(ov_sls$ovlp.sels), ]
+      return(Y)
+  }))
+  
+  ov_sls$ovlp.sels <- NULL
+   
+  return(ov_sls) 
+ 
+}
+
+```
+
+# Optimize detection for 55 kHz single cut with more signals
+
+```{r optimize detection for 55 kHz single 5 min cut, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv", stringsAsFactors = FALSE)
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+table(sels_55$sound.files)
+
+sels_55 <- split_sels[split_sels$sound.files == "TH-27.wav", ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+oed <- optimize_energy_detector(reference = sels_55, threshold = seq(0.01, 0.03, 0.005), min.duration = c(0.005, 0.01, 0.001), ssmooth = c(1, 2.5, 5, 10), hold.time = c(0.0025, 0.005, 0.01, 0.05, seq(0.08, 0.1, 0.01)), path = .Options$warbleR$path, thinning = c(0.5), parallel = 4, bp = c(35, 90), max.duration = c(0.15, 0.2, 0.22), previous.output = oed)
+
+saveRDS(oed, "./data/processed/optimization_55kHz_with_bedding.RDS")
+
+```
+
+```{r results optimize detection for single 5 min cut, eval = TRUE}
+
+optim_ad <- readRDS("./data/processed/optimization_55kHz_with_bedding.RDS")
+
+# print dynamic table
+oa_DT <- datatable(optim_ad, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+
+```
+
+# Optimize detection for 55 kHz 5 cuts with more signals
+
+```{r optimize detection for 55 kHz 5 cuts, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+tab <- table(sels_55$sound.files)
+sels_55 <- sels_55[sels_55$sound.files %in% names(tab)[tab > 240], ]
+
+
+# best tuning parameters 
+oed5 <- optimize_energy_detector(reference = sels_55, files =  unique(sels_zoo55$sound.files), threshold = c(0.025, 0.03), min.duration = c(0.001), ssmooth = c(1, 2.5, 5), hold.time = c(0.005, 0.003), path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = c(0.15, 0.2, 0.22), by.sound.file = TRUE)
+
+saveRDS(oed5, "./data/processed/optimization_55kHz_5_cuts_with_bedding.RDS")
+
+```
+
+```{r results optimize detection for 55 kHz 5 cuts, eval = TRUE}
+
+optim_ad <- readRDS("./data/processed/optimization_55kHz_5_cuts_with_bedding.RDS")
+
+optim_ad <- summarize_diagnostic(optim_ad, time.diagnostics = TRUE)
+
+oa_DT <- datatable(optim_ad, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+ 
+```
+
+# Optimal detection diagnostic 55 kHz 5 cuts
+
+```{r optimize detection for 55 kHz 5 cuts try selected tuning parameters, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+tab <- table(sels_55$sound.files)
+sels_55 <- sels_55[sels_55$sound.files %in% names(tab)[tab > 240], ]
+
+
+# best tuning parameters 
+ed5 <- energy_detector(files =  unique(sels_55$sound.files), threshold = 0.025, min.duration = 0.001, ssmooth = 1, hold.time = 0.005, path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 0.22)
+
+# fed4
+saveRDS(ed5, "./data/processed/optimal_detection_55kHz_5_cuts_with_bedding.RDS")
+
+```
+
+```{r diagnose detection for 55 kHz 5 cuts try selected tuning parameters results by sound file, eval = FALSE}
+ed5 <- readRDS("./data/processed/optimal_detection_55kHz_5_cuts_with_bedding.RDS")
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+tab <- table(sels_55$sound.files)
+sels_55 <- sels_55[sels_55$sound.files %in% names(tab)[tab > 240], ]
+led5 <- label_detection(reference = sels_55, detection = ed5, parallel = 10, pb = FALSE)
+
+led5 <- filter_detection(led5, parallel = 10, pb = FALSE)
+
+optim_ad_bs <- diagnose_detection(reference = sels_55, detection = led5, by.sound.file = TRUE)
+
+optim_ad <- diagnose_detection(reference = sels_55, detection = led5, by.sound.file = FALSE)
+
+saveRDS(list(call_5 = attributes(ed5)$call, filtered_detect_5 = led5, optim_ad_bs_5 = optim_ad_bs, optim_ad_5 = optim_ad), "./data/processed/filtered_detection_55Khz_5_cuts_with_bedding.RDS")
+
+```
+
+## By sound file
+```{r optimize detection for 55 kHz 5 cuts print results by sound files, eval = TRUE, warning=FALSE}
+
+attach(readRDS("./data/processed/filtered_detection_55Khz_5_cuts_with_bedding.RDS"))
+
+call_5
+
+oa_DT <- datatable(optim_ad_bs_5, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_bs_5, is.numeric), 3)
+
+```
+
+## Summarized
+
+```{r optimize detection for 55 kHz 5 cuts print results, eval = TRUE, warning=FALSE}
+
+oa_DT <- datatable(optim_ad_5, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_5, is.numeric), 3)
+
+  
+```
+
+# Detection over all files
+
+# Optimize detection
+
+```{r optimize detection for 55 kHz all cuts, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+# best tuning parameters 
+oed_all <- optimize_energy_detector(reference = sels_55, files =  unique(sels_55$sound.files), threshold = c(0.025, 0.03), min.duration = c(0.001), ssmooth = c(1, 2.5, 5), hold.time = c(0.005, 0.003), path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = c(0.15, 0.2, 0.22), by.sound.file = FALSE)
+
+
+saveRDS(oed_all, "./data/processed/optimization_55kHz_all_cuts_with_bedding.RDS")
+
+```
+
+```{r optimize detection for 55 kHz all files cuts print results , eval = TRUE, warning=FALSE}
+
+oed_all <- readRDS("./data/processed/optimization_55kHz_all_cuts_with_bedding.RDS")
+
+oa_DT <- datatable(oed_all, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(oed_all, is.numeric), 3)
+
+```
+
+```{r Run detection over all files, eval=FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+# merged overlapping selections
+split_sels <- merged_overlaps(split_sels)
+
+# best tuning parameters 
+ed_all <-  energy_detector(files = unique(split_sels$sound.files), threshold = 0.025, min.duration = 0.001, ssmooth = 1, hold.time = 0.003, path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 0.2)
+
+saveRDS(ed_all, "./data/processed/optimal_detection_55kHz_all_cuts_with_bedding.RDS")
+
+```
+
+```{r diagnose detection all 55 kHz cuts try selected tuning parameters results by sound file, eval = FALSE}
+ed_all <- readRDS("./data/processed/optimal_detection_55kHz_all_cuts_with_bedding.RDS")
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+label_ed_all <- label_detection(reference = sels_55, detection = ed_all, parallel = 10, pb = FALSE)
+filter_ed_all <- filter_detection(label_ed_all, parallel = 10, pb = FALSE)
+
+optim_ad_bs_all <- diagnose_detection(reference = sels_55, detection = filter_ed_all, by.sound.file = TRUE, pb = FALSE)
+
+optim_ad_all <- diagnose_detection(reference = sels_55, detection = ed_all, pb = FALSE)
+
+saveRDS(list(call = attributes(ed_all)$call, filter_ed_all = filter_ed_all, optim_ad_bs_all = optim_ad_bs_all, optim_ad_all = optim_ad_all), "./data/processed/filtered_detection_55Khz_all_cuts_with_bedding.RDS")
+
+```
+
+## By sound file
+
+```{r print diagnose detection all 55 kHz cuts results by sound file, eval = TRUE, warning=FALSE}
+
+attach(readRDS("./data/processed/filtered_detection_55Khz_all_cuts_with_bedding.RDS"))
+
+call
+
+oa_DT <- datatable(optim_ad_bs_all, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_bs_all, is.numeric), 3)
+
+```
+
+## Summarized
+
+```{r print diagnose detection all 55 kHz cuts results, eval = TRUE}
+
+oa_DT <- datatable(optim_ad_all, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_all, is.numeric), 3)
+
+  
+```
+
+# Random forest classification
+```{r measure acoustic parameters and run random forest, eval = FALSE}
+
+# measure spectrographic parameters
+spectral_parameters <- spectro_analysis(filter_ed_all, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 5)
+
+
+spectral_parameters$class <- filter_ed_all$detection.class
+
+# spectral_parameters <- data.frame(spectral_parameters, mfccs[, !names(spectral_parameters) %in% c("sound.files", "selec")])
+
+spectral_parameters$class[spectral_parameters$class != "false.positive"] <- "true.positive"
+
+# make it a factor for ranger to work 
+spectral_parameters$class <- as.factor(spectral_parameters$class)
+  
+
+
+  # run RF model spectral and cepstral parameters
+  rfm <-
+    ranger(
+      class ~ .,
+      data = spectral_parameters[, !names(spectral_parameters) %in% c("sound.files", "selec")],
+      num.trees = 10000,
+      importance = "impurity",
+      seed = 10
+    )
+
+  # table(lab_detec$detection.class)
+filter_ed_all$pred.class <- rfm$predictions  
+  
+
+saveRDS(list(rfm = rfm, filter_ed_all_rf = filter_ed_all), "./data/processed/data_and_model_random_forest_55kHz_cuts_with_bedding.RDS")  
+
+```
+
+```{r random forest results, eval = TRUE}
+attach(readRDS("./data/processed/data_and_model_random_forest_55kHz_cuts_with_bedding.RDS"))
+
+rfm
+```
+
+# Final results
+Diagnostic after random forest classification:
+```{r random forest diagnostic, eval = TRUE}
+
+positive_detec <- filter_ed_all_rf[filter_ed_all_rf$pred.class == "true.positive", ]
+
+temp_detec <- positive_detec
+temp_detec$detection.class <- "true.positive"
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+diag <- diagnose_detection(reference = sels_55, detection = temp_detec, pb = FALSE)
+
+# print dynamic table
+oa_DT <- datatable(diag, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(diag, is.numeric), 3)
+```
+
+ Black line = 1:1
+ gray line = model slope
+```{r random forest results plots, eval = TRUE}
+
+obs_count <- tapply(sels_55$sound.files, sels_55$sound.files, length)
+pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 150, y = 550, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 20)
+
+
+# print best fit lm model
+(lm(pred_count ~ obs_count))
+
+```
+
+```{r splitting in 1 minute clips, eval = FALSE}
+# split
+split_obs <- split_acoustic_data(path = .Options$warbleR$path, X = sels_55, only.sels = TRUE, sgmt.dur = 60, pb = FALSE, parallel = 10)
+
+split_pred <- split_acoustic_data(path = .Options$warbleR$path, X = as.data.frame(positive_detec), only.sels = TRUE, sgmt.dur = 60, pb = FALSE, parallel = 10)
+
+obs_count <- tapply(split_obs$sound.files, split_obs$sound.files, length)
+pred_count <- tapply(split_pred$sound.files, split_pred$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+saveRDS(list(pred_count = pred_count, obs_count = obs_count), "observed_and_predicted_1_min_clips.RDS")
+```
+
+
+```{r, eval = FALSE}
+attach(readRDS("./data/processed/observed_and_predicted_1_min_clips.RDS"))
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+df$sum <- df$observed + df$predicted
+
+# plot
+ggplot(df[df$sum > 0, ], aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 20, y = 50, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 20)
+
+
+# print best fit lm model
+(lm(pred_count ~ obs_count))
+
+
+```
+
+---
+
+<font size="4">Session information</font>
+
+```{r session info, echo=F, eval = TRUE}
+
+sessionInfo()
+
+```

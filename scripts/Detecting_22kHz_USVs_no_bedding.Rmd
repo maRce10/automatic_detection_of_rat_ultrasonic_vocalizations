@@ -1,0 +1,443 @@
+---
+title: <center><font size="6"><b>Detecting 22 kHz USVs no bedding</b></font></center>
+subtitle: <center><font size="4"><b>Rat ultrasonic vocalizations</b></font></center>
+author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo Araya-Salas, PhD</a></font></center>
+date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    df_print: kable
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+fontsize: 12pt 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
+
+## add 'developer/' to packages to be installed from github
+x <- c("devtools", "maRce10/warbleR", "bioacoustics", "pbapply", "Rraven", "parallel", "viridis", "rfigshare", "svMisc", "readxl", "ranger", "kableExtra", "DT", "maRce10/ohun", "ggplot2")
+
+aa <- lapply(x, function(y) {
+  
+  # get pakage name
+  pkg <- strsplit(y, "/")[[1]]
+  pkg <- pkg[length(pkg)]
+  
+  # check if installed, if not then install 
+  if (!pkg %in% installed.packages()[,"Package"])  {
+
+      if (grepl("/", y))  devtools::install_github(y, force = TRUE) else
+    install.packages(y) 
+    }
+
+  # load package
+  try(require(pkg, character.only = T), silent = T)
+})
+
+```
+
+```{r functions and global parameters, eval = TRUE, echo = FALSE}
+
+warbleR_options(
+  wav.path = "~/Dropbox/Recordings/ratas_cin/recs/5-min_clips_no_bedding/"
+)
+
+opts_knit$set(root.dir = "..")
+
+source("~/Dropbox/R_package_testing/ohun/R/split_sound_files.R")
+
+```
+
+
+# Optimize detection for 22 kHz single cut with more signals
+
+```{r optimize detection for 22 kHz single 5 min cut, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+sels_22 <- split_sels[split_sels$sound.files == "T0000011-1.wav", ]
+
+oed <- optimize_energy_detector(reference = sels_22, threshold = seq(0.015, 0.025, 0.005), min.duration = seq(0.001, 0.003, 0.001), ssmooth = c(5, 10, 15), hold.time = seq(0.08, 0.1, 0.01), path = .Options$warbleR$path, thinning = c(0.5, 1), parallel = 15,  bp = c(20, 30), max.duration = 3)
+
+# full_spectrograms(env, flim = c(20, 30), rows = 5, dest.path = "./data/processed/test_sound_files", suffix = "test_autodetec_best_parameters", width = 15, height = 8.5, fast.spec = TRUE)
+
+# View(optim_ad[optim_ad$sensitivity == 1 & optim_ad$specificity == 1, ])
+
+saveRDS(oed, "./data/processed/optimization_22kHz.RDS")
+
+
+# test best 
+# ed <- energy_detector(files =  unique(sels_22$sound.files), threshold = 0.015, min.duration = 0.002, ssmooth = 15, hold.time = 0.1, path = .Options$warbleR$path, thinning = 0.5, parallel = 12, bp = c(20, 30))
+# 
+# diagnose_detection(sels_22, ed, parallel = 12)
+# test best 
+# env_best <- autodetec(output = "list", pb = FALSE, para = 1, flist = unique(sels_22$sound.files), mindur = 0.001, threshold = 2, ssmooth = 6000, hold.time = 0.09, bp = c(20, 30), power = 1)
+# 
+# diagnose_detection(sels_22, env_best$selection.table)
+# 
+# env_best2 <- autodetec(output = "list", X = env, pb = FALSE, para = 1, flist = unique(sels_22$sound.files), mindur = 0.001, threshold = 2, ssmooth = 6000, hold.time = 0.09, bp = c(20, 30), power = 1)
+# 
+# diagnose_detection(sels_22, env_best2$selection.table)
+
+```
+
+```{r results optimize detection for 22 kHz single 5 min cut, eval = TRUE}
+
+optim_ad <- readRDS("./data/processed/optimization_22kHz.RDS")
+
+# print dynamic table
+oa_DT <- datatable(optim_ad, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+
+```
+
+# Optimize detection for 22 kHz 4 cuts with more signals
+
+```{r optimize detection for 22 kHz 4 cuts, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+tab <- table(sels_22$sound.files)
+sels_22 <- sels_22[sels_22$sound.files %in% names(tab)[tab > 20], ]
+
+# best tuning parameters 
+oed4 <- optimize_energy_detector(reference = sels_22, files =  unique(sels_22$sound.files), threshold = 0.02, min.duration = 0.002, ssmooth = c(13, 15, 17), hold.time = c(0.05, 0.08, 0.09, 0.1), path = .Options$warbleR$path, thinning = 0.5, parallel = 10, bp = c(20, 30), max.duration = c(3, 2.5, 5, 10, 10000), by.sound.file = TRUE, previous.output = oed4)
+
+saveRDS(oed4, "./data/processed/optimization_22kHz_4_cuts.RDS")
+
+```
+
+```{r results optimize detection for 22 kHz 4 cuts, eval = TRUE}
+
+optim_ad <- readRDS("./data/processed/optimization_22kHz_4_cuts.RDS")
+
+# optim_ad <- optim_ad[optim_ad$sound.files == "T0000011-1.wav", ]
+optim_ad <- summarize_diagnostic(optim_ad,time.diagnostics = TRUE)
+
+oa_DT <- datatable(optim_ad, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+ 
+```
+
+# Optimal detection diagnostic 22 kHz 4 cuts
+
+```{r optimize detection for 22 kHz 4 cuts try selected tuning parameters, eval = FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+tab <- table(sels_22$sound.files)
+sels_22 <- sels_22[sels_22$sound.files %in% names(tab)[tab > 20], ]
+# summary(sels_22$peak.freq)
+length(unique(sels_22$sound.files))
+
+# best tuning parameters 
+ed4 <- energy_detector(files =  unique(sels_22$sound.files), threshold = 0.02, min.duration = 0.002, ssmooth = 17, hold.time = 0.025, path = .Options$warbleR$path, thinning = 0.5, parallel = 8, bp = c(20, 30), max.duration = 3)
+
+# fed4
+saveRDS(ed4, "./data/processed/optimal_detection_22kHz_4_cuts.RDS")
+
+```
+
+## By sound file
+
+```{r optimize detection for 22 kHz 4 cuts try selected tuning parameters results by sound file, eval = TRUE}
+ed4 <- readRDS("./data/processed/optimal_detection_22kHz_4_cuts.RDS")
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+tab <- table(sels_22$sound.files)
+sels_22 <- sels_22[sels_22$sound.files %in% names(tab)[tab > 20], ]
+
+
+led4 <- label_detection(reference = sels_22, detection = ed4, parallel = 10, pb = FALSE)
+
+led4 <- filter_detection(led4, parallel = 10, pb = FALSE)
+
+attributes(ed4)$call
+
+optim_ad_bs <- diagnose_detection(reference = sels_22, detection = led4, by.sound.file = TRUE)
+
+oa_DT <- datatable(optim_ad_bs, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_bs, is.numeric), 3)
+
+```
+
+## Summarized
+
+```{r optimize detection for 22 kHz 4 cuts try selected tuning parameters results, eval = TRUE}
+
+optim_ad <- diagnose_detection(reference = sels_22, detection = led4)
+
+oa_DT <- datatable(optim_ad, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+
+  
+```
+
+# Detection over all files
+
+```{r Run detection over all files, eval=FALSE}
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+# best tuning parameters 
+ed_all <- energy_detector(files =  unique(split_sels$sound.files), threshold = 0.02, min.duration = 0.002, ssmooth = 17, hold.time = 0.025, path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(20, 30), max.duration = 3)
+
+
+saveRDS(ed_all, "./data/processed/optimal_detection_22kHz_all_cuts.RDS")
+
+```
+
+## By sound file
+
+```{r optimize detection all 22 kHz cuts try selected tuning parameters results by sound file, eval = TRUE}
+
+ed_all <- readRDS("./data/processed/optimal_detection_22kHz_all_cuts.RDS")
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+label_ed_all <- label_detection(reference = sels_22, detection = ed_all, parallel = 10, pb = FALSE)
+filter_ed_all <- filter_detection(label_ed_all, parallel = 10, pb = FALSE)
+
+
+optim_ad_bs_all <- diagnose_detection(reference = sels_22, detection = filter_ed_all, by.sound.file = TRUE, pb = FALSE)
+
+attributes(ed_all)$call
+
+oa_DT <- datatable(optim_ad_bs_all, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad_bs, is.numeric), 3)
+
+```
+
+## Summarized
+
+```{r optimize detection for all 22 kHz cuts try selected tuning parameters results, eval = TRUE}
+
+optim_ad_all <- diagnose_detection(reference = sels_22, detection = ed_all, pb = FALSE)
+
+oa_DT <- datatable(optim_ad_all, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(optim_ad, is.numeric), 3)
+
+  
+```
+
+# Random forest classification
+```{r measure acoustic parameters and run random forest, eval = FALSE}
+
+ed_all <- readRDS("./data/processed/optimal_detection_22kHz_all_cuts.RDS")
+
+ed_all <- label_detection(reference = sels_22, detection = ed_all, parallel = 10, pb = FALSE)
+ed_all <- filter_detection(ed_all, parallel = 10, pb = FALSE)
+
+# measure spectrographic parameters
+spectral_parameters <- spectro_analysis(ed_all, bp = c(20, 30), fast = TRUE, ovlp = 70, parallel = 10)
+
+# mfccs <- mfcc_stats(X = lab_detec, bp = c(1, 3.5), ovlp = 70, parallel = 10)
+
+# na_rows <- unique(unlist(sapply(mfccs, function(x) which(is.na(x)))))
+
+# lab_detec <- lab_detec[-na_rows, ]
+# spectral_parameters <- spectral_parameters[-na_rows, ]
+# mfccs <- mfccs[-na_rows, ]
+
+spectral_parameters$class <- ed_all$detection.class
+
+# spectral_parameters <- data.frame(spectral_parameters, mfccs[, !names(spectral_parameters) %in% c("sound.files", "selec")])
+
+spectral_parameters$class[spectral_parameters$class != "false.positive"] <- "true.positive"
+
+# make it a factor for ranger to work 
+spectral_parameters$class <- as.factor(spectral_parameters$class)
+  
+  # run RF model spectral and cepstral parameters
+  rfm <-
+    ranger(
+      class ~ .,
+      data = spectral_parameters[, !names(spectral_parameters) %in% c("sound.files", "selec")],
+      num.trees = 10000,
+      importance = "impurity",
+      seed = 10
+    )
+  
+saveRDS(list(rfm = rfm, spectral_parameters = spectral_parameters, detection = ed_all), "./data/processed/data_and_model_random_forest_22kHz_cuts.RDS")  
+```
+
+```{r random forest results, eval = TRUE}
+attach(readRDS("./data/processed/data_and_model_random_forest_22kHz_cuts.RDS"))
+
+rfm
+```
+
+
+# Final results
+Diagnostic after random forest classification:
+```{r random forest diagnostic, eval = TRUE}
+
+# table(lab_detec$detection.class)
+detection$pred.class <- rfm$predictions
+
+positive_detec <- detection[detection$pred.class == "true.positive", ]
+
+temp_detec <- positive_detec
+temp_detec$detection.class <- "true.positive"
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+diag <- diagnose_detection(reference = sels_22, detection = temp_detec, pb = FALSE)
+
+# print dynamic table
+oa_DT <- datatable(diag, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+formatRound(table = oa_DT, columns = sapply(diag, is.numeric), 3)
+```
+
+ Black line = 1:1
+ gray line = model slope
+```{r random forest results plots, eval = TRUE}
+
+obs_count <- tapply(sels_22$sound.files, sels_22$sound.files, length)
+pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 50, y = 150, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 20)
+
+
+# print best fit lm model
+(lm(pred_count ~ obs_count))
+
+```
+
+```{r Splitting in 1 minute clips, eval = FALSE}
+
+# split
+split_obs <- split_sound_files(path = .Options$warbleR$path, X = sels_22, only.sels = TRUE, sgmt.dur = 60, pb = FALSE, parallel = 10)
+
+split_pred <- split_sound_files(path = .Options$warbleR$path, X = as.data.frame(positive_detec), only.sels = TRUE, sgmt.dur = 60, pb = FALSE, parallel = 10)
+
+obs_count <- tapply(split_obs$sound.files, split_obs$sound.files, length)
+pred_count <- tapply(split_pred$sound.files, split_pred$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+df$sum <- df$observed + df$predicted
+
+# plot
+ggplot(df[df$sum > 0, ], aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 20, y = 50, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 20)
+
+
+# print best fit lm model
+(lm(pred_count ~ obs_count))
+
+
+```
+
+---
+
+<font size="4">Session information</font>
+
+```{r session info, echo=F, eval = TRUE}
+
+sessionInfo()
+
+```

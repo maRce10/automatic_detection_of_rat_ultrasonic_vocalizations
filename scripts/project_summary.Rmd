@@ -1,0 +1,376 @@
+---
+title: <center><font size="6"><b>Resumen de resultados</b></font></center>
+author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo
+  Araya-Salas, PhD</a></font></center>
+subtitle: <center><font size="4"><b>Detección de vocalizaciones ultrasónicos en ratas</b></font></center>
+date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+toc-title: "Contenidos"
+fontsize: 12pt
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
+
+## add 'developer/' to packages to be installed from github
+x <- c("devtools", "maRce10/warbleR", "kableExtra", "ggplot2", "viridis")
+
+aa <- lapply(x, function(y) {
+  
+  # get pakage name
+  pkg <- strsplit(y, "/")[[1]]
+  pkg <- pkg[length(pkg)]
+  
+  # check if installed, if not then install 
+  if (!pkg %in% installed.packages()[,"Package"])  {
+
+      if (grepl("/", y))  devtools::install_github(y, force = TRUE) else
+    install.packages(y) 
+    }
+
+  # load package
+  try(require(pkg, character.only = T), silent = T)
+})
+
+```
+
+```{r functions and global parameters, eval = TRUE, echo = FALSE}
+
+opts_knit$set(root.dir = "..")
+opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+source("~/Dropbox/R_package_testing/ohun/R/diagnose_detection.R")
+source("~/Dropbox/R_package_testing/ohun/R/label_detection.R")
+source("~/Dropbox/R_package_testing/ohun/R/summarize_diagnostic.R")
+source("~/Dropbox/R_package_testing/warbleR/warbleR/R/overlapping_sels.R")
+source("~/Dropbox/R_package_testing/warbleR/warbleR/R/pblapply_wrblr_int.R")
+
+merged_overlaps <- function(X){
+  
+  # merged overlapping selections
+  ov_sls <- overlapping_sels(X)
+  
+  ov_sls <- do.call(rbind, lapply(unique(ov_sls$ovlp.sels), function(x){
+         
+    if (!is.na(x)){
+       
+       Y <- ov_sls[ov_sls$ovlp.sels == x & !is.na(ov_sls$ovlp.sels), ]
+       Y$end[1] <- max(Y$end)
+       Y$bottom.freq[1] <- min(Y$bottom.freq)
+       Y$top.freq[1] <- max(Y$top.freq)
+       Y <- Y[1, ]
+       } else
+        Y <- ov_sls[is.na(ov_sls$ovlp.sels), ]
+      return(Y)
+  }))
+  
+  ov_sls$ovlp.sels <- NULL
+   
+  return(ov_sls) 
+ 
+}
+
+```
+
+```{r}
+wi_bed <- info_sound_files(path = "~/Dropbox/Recordings/ratas_cin/recs/original_with_bedding/")
+
+wi_bed$context <- "prueba de jaula"
+
+wi_no_bed <- info_sound_files(path = "~/Dropbox/Recordings/ratas_cin/recs/original_no_bedding/")
+
+wi_no_bed$context <- "campo abierto"
+
+wi2 <- wi <- rbind(wi_bed, wi_no_bed)
+ wi$wav.size <- wi$samples <- NULL
+```
+
+
+## Descripción de los archivos de audio
+
+- `r nrow(wi)` archivos 
+
+- `r sum(wi2$context == "campo abierto")` archivos (`r round(sum(wi2$duration[wi2$context == "campo abierto"]) / 60, 0)` minutos)  de la prueba de campo abierto `r sum(wi$context == "prueba de jaula")` archivos (`r round(sum(wi$duration[wi$context == "prueba de jaula"]) / 60, 0)` minutos) de la prueba de jaula.
+
+- Duracion total de `r round(sum(wi2$duration) / 60, 2)` minutos (~ `r round(sum(wi$duration) / 3600, 2)` hours)
+
+- Un total de `r round(sum(wi2$wav.size) / 1000, 2)` GB
+
+- `r nrow(wi)` archivos 
+
+
+## Metadatos de los archivos de audio utilizados
+```{r}
+df1 <- knitr::kable(wi[1:49, ], row.names = FALSE, escape = FALSE, format = "latex", digits = 2)
+df1 <- kable_styling(df1, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 10, latex_options = "HOLD_position")
+
+df1
+
+df2 <- knitr::kable(wi[50:nrow(wi), ], row.names = FALSE, escape = FALSE, format = "latex", digits = 2)
+df2 <- kable_styling(df2, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 10, latex_options = "HOLD_position")
+
+df2
+
+# datatable(wi, editable = list(
+#   target = 'row'
+# ), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+#   pageLength = 100, autoWidth = TRUE, dom = 'ft'
+# ), autoHideNavigation = TRUE, escape = FALSE)
+
+```
+
+
+```{r After compression, eval=FALSE}
+
+wi_bed <- info_sound_files(path = "~/Dropbox/Recordings/ratas_cin/recs/200_kHz_bedding/")
+
+wi_bed$context <- "bedding"
+
+wi_no_bed <- info_sound_files(path = "~/Dropbox/Recordings/ratas_cin/recs/200_kHz_no_bedding/")
+
+wi_no_bed$context <- "no bedding"
+
+wi <- rbind(wi_bed, wi_no_bed)
+
+datatable(wi, editable = list(
+  target = 'row'
+), rownames = FALSE, style = "bootstrap",  filter = 'top', options = list(
+  pageLength = 100, autoWidth = TRUE, dom = 'ft'
+), autoHideNavigation = TRUE, escape = FALSE)
+
+```
+
+****
+
+# Resultados
+
+## Llamados de 55 kHz
+
+### Campo abierto (55 kHz)
+```{r diagnostic 55, eval = TRUE}
+
+attach(readRDS("./data/processed/data_and_model_random_forest_55kHz_cuts.RDS"))
+
+positive_detec <- filter_ed_all_rf[filter_ed_all_rf$pred.class == "true.positive", ]
+
+temp_detec <- positive_detec
+temp_detec$detection.class <- "true.positive"
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+sels_55 <- merged_overlaps(sels_55)
+
+diag_55 <- diagnose_detection(reference = sels_55, detection = temp_detec, pb = FALSE)
+
+X <- diag_55[, c("true.positives", "false.positives", "false.negatives", "sensitivity", "specificity")]
+names(X) <- c("verdaderos.positivos", "falsos.positivos", "falsos.negativos", "sensibilidad", "specificidad")
+
+# print table
+df1 <- knitr::kable(X, row.names = FALSE, escape = FALSE, format = "latex", digits = c(3))
+df1 <- kable_styling(df1, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 12, latex_options = "HOLD_position")
+
+df1
+```
+
+
+#### Relación entre llamadas observadas y predichas por el modelo automático de detección
+
+- Linea blanca = 1:1
+- Linea gris = pendiente de la regresión
+```{r plot, eval = TRUE, fig.align='left'}
+
+obs_count <- tapply(sels_55$sound.files, sels_55$sound.files, length)
+pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 150, y = 550, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  labs(x = "Observados", y = "Predichos") +  
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 10)
+
+
+# print best fit lm model
+# (lm(pred_count ~ obs_count))
+
+```
+
+### Prueba de la jaula (55 kHz)
+
+```{r , eval = TRUE}
+
+filter_ed_all_rf <- readRDS("./data/processed/data_and_model_random_forest_55kHz_cuts_with_bedding.RDS")$filter_ed_all_rf
+
+positive_detec <- filter_ed_all_rf[filter_ed_all_rf$pred.class == "true.positive", ]
+
+temp_detec <- positive_detec
+temp_detec$detection.class <- "true.positive"
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_bedding.csv")
+
+sels_55 <- split_sels[split_sels$peak.freq > 30, ]
+
+# merged overlapping selections
+suppressMessages(sels_55 <- merged_overlaps(sels_55))
+
+diag <- diagnose_detection(reference = sels_55, detection = temp_detec, pb = FALSE)
+
+X <- diag[, c("true.positives", "false.positives", "false.negatives", "sensitivity", "specificity")]
+names(X) <- c("verdaderos.positivos", "falsos.positivos", "falsos.negativos", "sensibilidad", "specificidad")
+
+# print table
+df1 <- knitr::kable(X, row.names = FALSE, escape = FALSE, format = "latex", digits = c(3))
+df1 <- kable_styling(df1, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 12, latex_options = "HOLD_position")
+
+df1
+```
+
+#### Relación entre llamadas observadas y predichas
+```{r random forest results plots, eval = TRUE, fig.align='left'}
+
+obs_count <- tapply(sels_55$sound.files, sels_55$sound.files, length)
+pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 150, y = 550, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  labs(x = "Observados", y = "Predichos") +  
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 10)
+
+```
+
+
+## Llamados de 22 kHz
+
+### Campo abierto (22 kHz)
+```{r diagnostic 22, eval = TRUE}
+
+attach(readRDS("./data/processed/data_and_model_random_forest_22kHz_cuts.RDS"))
+
+# table(lab_detec$detection.class)
+detection$pred.class <- rfm$predictions
+
+positive_detec <- detection[detection$pred.class == "true.positive", ]
+
+temp_detec <- positive_detec
+temp_detec$detection.class <- "true.positive"
+
+split_sels <- read.csv("./data/processed/split_manual_annotations_5min_no_bedding.csv")
+
+sels_22 <- split_sels[split_sels$peak.freq > 20 & split_sels$peak.freq < 30, ]
+
+diag_22 <- diagnose_detection(reference = sels_22, detection = temp_detec, by.sound.file = FALSE)
+
+X <- diag_22[, c("true.positives", "false.positives", "false.negatives", "sensitivity", "specificity")]
+names(X) <- c("verdaderos.positivos", "falsos.positivos", "falsos.negativos", "sensibilidad", "specificidad")
+
+df1 <- knitr::kable(X, row.names = FALSE, escape = FALSE, format = "latex", digits = c(3))
+
+df1 <- kable_styling(df1, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 12, latex_options = "HOLD_position")
+
+df1
+
+```
+
+#### Relación entre llamadas observadas y predichas
+
+```{r plot 22 khz, eval = TRUE, fig.align='left'}
+
+obs_count <- tapply(sels_22$sound.files, sels_22$sound.files, length)
+pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
+sound_files <- unique(split_sels$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+   annotate("text", x = 20, y = 50, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) +
+  labs(x = "Observados", y = "Predichos") +  
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+  theme_classic(base_size = 10)
+
+```
+
+---
+
+<font size="4">Información de la sesión de R</font>
+
+```{r session info, echo=F, eval = TRUE}
+
+sessionInfo()
+
+```
