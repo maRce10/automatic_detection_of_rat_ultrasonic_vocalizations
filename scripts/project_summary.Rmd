@@ -1,13 +1,15 @@
 ---
-title: <center><font size="6"><b>Resumen de resultados</b></font></center>
-author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo
-  Araya-Salas, PhD</a></font></center>
-subtitle: <center><font size="4"><b>Detección de vocalizaciones ultrasónicos en ratas</b></font></center>
+title: <center><font size="6"><b>Desempeño de las rutinas de detección automática</b></font></center>
+author: <center><font size="3">Marcelo
+  Araya Salas, Juan Carlos Brenes Saenz & Mijail Rojas Carvajal</font></center>
+subtitle: <center><font size="3"><b><i>Proyecto C0754 Desarrollo de una herramienta computacional para la detección, la cuantificación estructural y la clasificación semisupervisada de vocalizaciones ultrasónicas de ratas </b></i></font></center><br><center><font size="3"><b>Centro de Investigación en Neurociencias, Universidad de Costa Rica</b></font></center>
 date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
 output:
   pdf_document:
+    highlight: pygments
     toc: yes
     toc_depth: '3'
+urlcolor: blue
 toc-title: "Contenidos"
 fontsize: 12pt
 editor_options:
@@ -42,7 +44,7 @@ aa <- lapply(x, function(y) {
 ```{r functions and global parameters, eval = TRUE, echo = FALSE}
 
 opts_knit$set(root.dir = "..")
-opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE, fig.width = 5, fig.height = 3)
 source("~/Dropbox/R_package_testing/ohun/R/diagnose_detection.R")
 source("~/Dropbox/R_package_testing/ohun/R/label_detection.R")
 source("~/Dropbox/R_package_testing/ohun/R/summarize_diagnostic.R")
@@ -96,7 +98,7 @@ wi2 <- wi <- rbind(wi_bed, wi_no_bed)
 
 - `r sum(wi2$context == "campo abierto")` archivos (`r round(sum(wi2$duration[wi2$context == "campo abierto"]) / 60, 0)` minutos)  de la prueba de campo abierto `r sum(wi$context == "prueba de jaula")` archivos (`r round(sum(wi$duration[wi$context == "prueba de jaula"]) / 60, 0)` minutos) de la prueba de jaula.
 
-- Duracion total de `r round(sum(wi2$duration) / 60, 2)` minutos (~ `r round(sum(wi$duration) / 3600, 2)` hours)
+- Duración total de `r round(sum(wi2$duration) / 60, 2)` minutos (~ `r round(sum(wi$duration) / 3600, 2)` horas)
 
 - Un total de `r round(sum(wi2$wav.size) / 1000, 2)` GB
 
@@ -150,7 +152,7 @@ datatable(wi, editable = list(
 
 ## Llamados de 55 kHz
 
-### Campo abierto (55 kHz)
+### Campo abierto
 ```{r diagnostic 55, eval = TRUE}
 
 attach(readRDS("./data/processed/data_and_model_random_forest_55kHz_cuts.RDS"))
@@ -217,7 +219,7 @@ ggplot(df, aes(x = observed, y = predicted)) +
   annotate("text", x = 150, y = 550, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
   labs(x = "Observados", y = "Predichos") +  
   geom_smooth(method = "lm", se = FALSE, col = "gray") +
-  theme_classic(base_size = 10)
+  theme_classic(base_size = 18)
 
 
 # print best fit lm model
@@ -225,7 +227,9 @@ ggplot(df, aes(x = observed, y = predicted)) +
 
 ```
 
-### Prueba de la jaula (55 kHz)
+*Fig. 1. Relación entre número de llamados de 55 kHz observados por archivo de audio en campo abierto y los predichos según la rutina automática de detección.*
+
+### Prueba de la jaula
 
 ```{r , eval = TRUE}
 
@@ -256,7 +260,7 @@ df1
 ```
 
 #### Relación entre llamadas observadas y predichas
-```{r random forest results plots, eval = TRUE, fig.align='left'}
+```{r, eval = TRUE, fig.align='left'}
 
 obs_count <- tapply(sels_55$sound.files, sels_55$sound.files, length)
 pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
@@ -289,14 +293,15 @@ ggplot(df, aes(x = observed, y = predicted)) +
   annotate("text", x = 150, y = 550, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
   labs(x = "Observados", y = "Predichos") +  
   geom_smooth(method = "lm", se = FALSE, col = "gray") +
-  theme_classic(base_size = 10)
+  theme_classic(base_size = 18)
 
 ```
 
+*Fig. 2. Relación entre número de llamados de 55 kHz observados por archivo de audio en la prueba de jaula y los predichos según la rutina automática de detección.*
 
 ## Llamados de 22 kHz
 
-### Campo abierto (22 kHz)
+### Campo abierto
 ```{r diagnostic 22, eval = TRUE}
 
 attach(readRDS("./data/processed/data_and_model_random_forest_22kHz_cuts.RDS"))
@@ -328,7 +333,7 @@ df1
 
 #### Relación entre llamadas observadas y predichas
 
-```{r plot 22 khz, eval = TRUE, fig.align='left'}
+```{r, eval = TRUE, fig.align='left'}
 
 obs_count <- tapply(sels_22$sound.files, sels_22$sound.files, length)
 pred_count <- tapply(positive_detec$sound.files, positive_detec$sound.files, length)
@@ -361,9 +366,90 @@ ggplot(df, aes(x = observed, y = predicted)) +
    annotate("text", x = 20, y = 50, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) +
   labs(x = "Observados", y = "Predichos") +  
   geom_smooth(method = "lm", se = FALSE, col = "gray") +
-  theme_classic(base_size = 10)
+  theme_classic(base_size = 18)
 
 ```
+
+*Fig. 3. Relación entre número de llamados de 22 kHz observados por archivo de audio en campo abierto y los predichos según la rutina automática de detección.*
+
+--- 
+
+Los siguientes enlaces contienen las rutinas de R con que se optimizaron los modelos:
+
+ - [55 kHz en campo abierto](https://rpubs.com/marcelo-araya-salas/811726)
+ - [55 kHz en la prueba de jaula](https://rpubs.com/marcelo-araya-salas/824937)
+ - [22 kHz en campo abierto](https://rpubs.com/marcelo-araya-salas/811722)
+ - [22 kHz en la prueba de jaula](https://rpubs.com/marcelo-araya-salas/818504)(solo detección)
+
+
+---
+
+
+# Aplicación a un nuevo juego de datos
+
+Actualmente la rutina de detección desarrollada se está usando para analizar las grabaciones de un nuevo proyecto (C0606, *Mecanismos conductuales de expresión y regulación emocional: Estudio de las respuestas emocionales positivas mediante la evaluación del auto-acicalamiento, las vocalizaciones ultrasónicas y la expresión genética como marcador de actividad cerebral en* Rattus norvegicus). Esto es una prueba de particular relevancia ya que es un juego de datos completamente diferente al usado para optimizar las rutinas. Un alto desempeño indicaría un bajo sobre-ajuste ('overfitting') y por lo tanto una aplicabilidad amplia del modelo. A continuación se detallan los resultados.
+
+Los archivos de audio contienen una gran cantidad de ruido de fondo, por lo que se usó la rutina de detección de 55 kHz para la prueba de jaula. La sensibilidad y la especificidad fueron similares a la obtenida durante la optimización de la rutina (incluso ligeramente mayores):
+```{r results on new data, eval = TRUE, fig.align='left'}
+
+filtered_detection <- readRDS("./data/processed/random_forest_filtered_detection_55kHz_with_bedding_alivio.RDS")
+
+reference <- read.csv("./data/processed/annotations_22kHz_alivio.csv")
+
+optim_ad <- diagnose_detection(reference = reference, detection = filtered_detection)
+
+X <- optim_ad[, c("true.positives", "false.positives", "false.negatives", "sensitivity", "specificity")]
+names(X) <- c("verdaderos.positivos", "falsos.positivos", "falsos.negativos", "sensibilidad", "specificidad")
+
+df1 <- knitr::kable(X, row.names = FALSE, escape = FALSE, format = "latex", digits = c(3))
+
+kable_styling(df1, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 12, latex_options = "HOLD_position")
+
+```
+
+El número de llamados predichos por archivo de audio fue muy cercano a los observados manualmente, lo que indica una alta precisión:
+```{r, eval = TRUE, fig.align='left'}
+ # Black line = 1:1
+ # gray line = model slope
+
+obs_count <- tapply(reference$sound.files, reference$sound.files, length)
+pred_count <- tapply(filtered_detection$sound.files, filtered_detection$sound.files, length)
+sound_files <- unique(reference$sound.files)
+
+
+# add those missing in predicted
+names_pred_0 <- setdiff(c(names(obs_count),sound_files), names(pred_count))
+pred_0 <- rep(0, length(names_pred_0))
+names(pred_0) <- names_pred_0
+pred_count <- c(pred_count, pred_0)
+
+# add those missing in observed
+names_obs_0 <- setdiff(c(names(pred_count), sound_files), names(obs_count))
+obs_0 <- rep(0, length(names_obs_0))
+names(obs_0) <- names_obs_0
+obs_count <- c(obs_count, obs_0)
+
+# order by name
+pred_count <- pred_count[order(names(pred_count))]
+obs_count <- obs_count[order(names(obs_count))]
+
+# put both in a single data frame
+df <- data.frame(sound.files = names(obs_count), observed = obs_count, predicted = pred_count)
+
+# plot
+ggplot(df, aes(x = observed, y = predicted)) +
+  geom_point(color = viridis(10, alpha = 0.4)[2], size = 3) +
+  geom_abline(slope = 1, intercept = 0) +
+  annotate("text", x = 50, y = 150, label = paste("r =", round(cor(obs_count, pred_count), 3)), size = 8) + 
+  geom_smooth(method = "lm", se = FALSE, col = "gray") +
+    labs(x = "Observados", y = "Predichos") +
+  theme_classic(base_size = 20)
+
+```
+
+*Fig. 4. Relación entre número de llamados de 55 kHz observados por archivo de audio y los predichos según la rutina automática de detección. Los archivos de audios pertenecen a un juego de datos diferente al usado para optimizar las rutinas.*
+
+
 
 ---
 

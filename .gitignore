@@ -115,3 +115,8 @@ deprecated/T0000004.WAV # large file
 deprecated/T0000001.WAV # large file
 data/processed/RDS_autodetec_2/T0000006-11.RDS # large file
 data/processed/data_and_model_random_forest_55kHz_cuts.RDS
+packrat/lib*/
+data/processed/data_and_model_random_forest_55kHz_no_bedding.RDS
+data/processed/data_and_model_random_forest_55kHz_cuts_with_bedding.RDS
+data/processed/random_forest_55kHz_no_bedding.RDS
+data/processed/random_forest_55kHz_with_bedding.RDS

@@ -305,6 +305,10 @@ spectral_parameters$class <- as.factor(spectral_parameters$class)
     )
   
 saveRDS(list(rfm = rfm, spectral_parameters = spectral_parameters, detection = ed_all), "./data/processed/data_and_model_random_forest_22kHz_cuts.RDS")  
+
+saveRDS(rfm, "./data/processed/random_forest_22kHz_no_bedding.RDS")  
+
+
 ```
 
 ```{r random forest results, eval = TRUE}

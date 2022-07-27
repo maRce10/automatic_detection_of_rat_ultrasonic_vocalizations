@@ -382,9 +382,7 @@ filter_ed_all$pred.class <- rfm$predictions
 
 saveRDS(list(rfm = rfm, filter_ed_all_rf = filter_ed_all_rf), "./data/processed/data_and_model_random_forest_55kHz_cuts.RDS")  
 
-
-
-saveRDS(rfm, "./data/processed/data_and_model_random_forest_55kHz_no_bedding.RDS")  
+saveRDS(rfm, "./data/processed/random_forest_55kHz_no_bedding.RDS")  
 
 ```
 

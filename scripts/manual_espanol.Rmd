@@ -1,14 +1,15 @@
 ---
 title: <center><font size="6"><b>Manual de detección automatica de vocalizaciones de ratas en <i>R</i></b></font></center>
-author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo
-  Araya-Salas, PhD</a></font></center>
-subtitle: <center><font size="4"><b>Centro de Investigación en Neurociencias</b></font></center>
+author: <center><font size="3">Marcelo
+  Araya Salas, Juan Carlos Brenes Saenz & Mijail Rojas Carvajal</font></center>
+subtitle: <center><font size="3"><b><i>Proyecto C0754 Desarrollo de una herramienta computacional para la detección, la cuantificación estructural y la clasificación semisupervisada de vocalizaciones ultrasónicas de ratas </b></i></font></center><br><center><font size="3"><b>Centro de Investigación en Neurociencias, Universidad de Costa Rica</b></font></center>
 date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
 output:
   pdf_document:
+    highlight: pygments
     toc: yes
     toc_depth: '3'
-    df_print: kable
+urlcolor: blue
 toc-title: "Contenidos"
 fontsize: 12pt
 editor_options:
@@ -19,7 +20,7 @@ editor_options:
 ```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
 
 ## add 'developer/' to packages to be installed from github
-x <- c("devtools", "maRce10/ohun", "kableExtra", "formatR")
+x <- c("devtools", "maRce10/ohun", "kableExtra", "formatR", "kable")
 
 aa <- lapply(x, function(y) {
   
@@ -45,22 +46,24 @@ ruta_archivos <- "~/Dropbox/Recordings/ratas_cin/recs/5-min_clips_no_bedding/"
 
 ---
 
-Este manual describe los pasos necesarios para la detección automática de vocalizaciones de ratas. La deteccion se lleva a cabo usando como herramienta principal el paquete de R [ohun](https://marce10.github.io/ohun/index.html), el cual facilita la detección automática de señales acústicas proporcionando funciones para diagnosticar y optimizar las rutinas de detección. 
+Este manual describe los pasos necesarios para la detección automática de vocalizaciones de ratas. La detección se lleva a cabo usando como herramienta principal el paquete de R [ohun](https://marce10.github.io/ohun/index.html), el cual facilita la detección automática de señales acústicas proporcionando funciones para diagnosticar y optimizar las rutinas de detección. 
 
-Primero debemos instalar y cargar el paquete [ohun](https://marce10.github.io/ohun/index.html):
+Primero debemos instalar y cargar los paquetes [ohun](https://marce10.github.io/ohun/index.html) y  [ranger](https://CRAN.R-project.org/package=ranger):
 ```{r, eval = FALSE}
 
 # instalar
 devtools::install_github("maRce10/ohun")
+install.packages("ranger")
 
 # cargar
 library(ohun)
+library(ranger)
 ```
 
 
 ## Preparar los archivos de audio
 
-Siempre es importante asegurarse que los archivos de audio pueden ser leidos en R. Esto lo podemos hacer así:
+Siempre es importante asegurarse que los archivos de audio pueden ser leídos en R. Esto lo podemos hacer así:
 
 ```{r, eval = FALSE}
 
@@ -79,7 +82,7 @@ check_wavs(path = ruta_archivos)
 ```
 
 
-Si todo está bien, el mensaje devuelve el mensaje "All files can be read". Note que el argumento `path` debe ser usado para indicar el directorio que contiene los archivos de audio. Este argumento sera usado por la mayoria de las funciones y es buena idea definir un valor desde el inicio.
+Si todo está bien, el mensaje devuelve el mensaje "All files can be read". Note que el argumento `path` debe ser usado para indicar el directorio que contiene los archivos de audio. Este argumento sera usado por la mayoría de las funciones y es buena idea definir un valor desde el inicio.
 
 Las rutinas de detección que se detallan en este manual pueden tomar un tiempo considerable en aplicarse (e.g. > 1 hora). Esto debido a que las grabaciones de sonidos ultrasónicos tienen tasas de muestreo muy altas, lo que hace que los archivos sean muy pesados. Una forma de mejorar la velocidad de la detección es reducir la tasa de muestreo de los archivos. Para las vocalizaciones de ratas una tasa de muestreo de 200 kHz es suficiente para que las llamadas sean registradas con precisión. Podemos bajar la tasa de muestreo de esta forma:  
 ```{r, eval = FALSE}
@@ -93,14 +96,14 @@ Si desconocemos la tasa de muestreo actual de nuestros archivos podemos revisarl
 
 ```{r, eval = FALSE}
 
-# ver informacion de archivos
+# ver información de archivos
 wav_info(path = ruta_archivos)
 
 ```
 
 ```{r, eval = TRUE, echo=FALSE}
 
-# ver informacion de archivos
+# ver información de archivos
 wav_info(path = ruta_archivos)[1:4,]
 
 ```
@@ -117,47 +120,49 @@ metadatos_nuevos_archivos <- split_sound_files(sgmt.dur = 5 * 60, path = ruta_ar
 
 El código anterior divide todos los archivos de audio en archivos de 5 minutos. El objeto `metadatos_nuevos_archivos` que se produjo contiene los nombres de los nuevos archivos así como de cual archivo provienen.
 
+---
 
 ## Detección automática de llamados ultrasónicos
-
-La actividad de investigacion en la que se desarrollaron las rutinas de deteccion que se muestran a continuacion, tambien permitio indetificar los parametros de ajuste ("tuning parameters") que optimizan la deteccion para diferentes contextos experimentales (prueba de jaula y campo abierto) y categorias de vocalizaciones (22 y 55 kHz). Este tutorial se limita a presentar las funciones utilizadas para la deteccion en estos diferentes escenarios junto con los parametros de ajuste que produjeron el mejor desempeño en cada escenario.
 
 La detección automática se lleva a cabo por medio de dos procesos: 
 
   1. Detección de sonidos con umbrales de energía: para una descripción detallada de este método ver el [caso de estudio del paquete ohun](https://marce10.github.io/ohun/articles/ohun.html). La detección se lleva a acabo con la función [`energy_detector()`](https://marce10.github.io/ohun/reference/energy_detector.html). 
   
-  
-  1. Filtrado de los sonidos detectados con *Random Forest*: este paso toma las detecciones producidas en el primer paso junto con medidas de su estructura acustica (e.g. duracion, frequencia, distribucion de energia) y genera un modelo que distingue las llamadas ultrasonicas del ruido de fondo. En otras palabras filtra las señales de interes de otros sonidos no deseados. 
-  
 
-### Vocalizaciones de 55 kHz campo abierto 
+  1. Filtrado de los sonidos detectados con *Random Forest*: este paso toma las detecciones producidas en el primer paso junto con medidas de su estructura acústica (e.g. duración, frecuencia, distribución de energía) y genera un modelo que distingue las llamadas ultrasónicas del ruido de fondo. En otras palabras filtra las señales de interés de otros sonidos no deseados. 
+
+La actividad de investigación en la que se desarrollaron las rutinas de detección que se muestran a continuación, también permitió identificar los parámetros de ajuste ("tuning parameters") que optimizan la detección para diferentes contextos experimentales (prueba de jaula y campo abierto) y categorías de vocalizaciones (22 kHz y 55 kHz). Este manual se limita a presentar las funciones utilizadas para la detección en estos diferentes escenarios junto con los parámetros de ajuste que produjeron el mejor desempeño en cada escenario. Los modelos de *Random Forest* para cada escenario se encuentran en [este repositorio en linea](https://figshare.com/articles/media/automatic_detection_of_rat_ultrasonic_vocalizations/17018747). 
+  
+### Vocalizaciones de 55 kHz en prueba de campo abierto (sin borucha)
 
 Detección con umbrales de energía:    
 
 ```{r, eval = FALSE}
 
-# measure spectrographic parameters
-parametros_acusticos <- spectro_analysis(filter_ed_all, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 1)
-
-deteccion <- energy_detector(threshold = 0.01, min.duration = 1, ssmooth = 5, hold.time = 5, path = ruta_archivos, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 15)
+# detectar
+deteccion <- energy_detector(threshold = 1, min.duration = 1, ssmooth = 5, hold.time = 5, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 15, path = ruta_archivos)
 
 ```
 
-Medicion de parametros acusticos para el Random Forest:
+Medición de parámetros acústicos para el *Random Forest*:
 ```{r, eval = FALSE}
 
+# medir parámetros acústicos
 parametros_acusticos <- spectro_analysis(deteccion, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 1, path = ruta_archivos)
 
 ```
 
-Clasificación con Random Forest:
+Clasificación con *Random Forest*:
 ```{r, eval = FALSE}
 
-## leer el modelo del repositorio de github
-clasificador_rf <- readRDS("")
+# bajar modelo de random forest del repositorio de figshare 
+download.file(url = "https://figshare.com/ndownloader/files/31475039", destfile = "modelo_random_forest_55_kHz_campo_abierto.RDS")
+
+# leer el modelo 
+clasificador_rf <- readRDS("modelo_random_forest_55_kHz_campo_abierto.RDS")
 
 # aplicarlo sobre las detecciones nuevas
-deteccion$clase <-predict(clasificador_rf, parametros_acusticos, type = "terminalNodes")$predictions
+deteccion$clase <-predict(object = clasificador_rf, data = parametros_acusticos)$predictions
 
 # remover los sonidos clasificados como ruido de fondo 
 detecion_filtrada <- deteccion[deteccion$clase == "true.positive", ]
@@ -166,17 +171,105 @@ detecion_filtrada <- deteccion[deteccion$clase == "true.positive", ]
 
 El objeto resultante (`detecion_filtrada`) es un cuadro de datos ("data.frame") con la posición en el tiempo de las vocalizaciones detectadas para cada uno de los archivos de audio en la ruta proporcionada. Tiene una estructura similar a esta:
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
-lbh_selec_reference[1:6´, 1:5]
+df1 <- knitr::kable(lbh_selec_reference[1:6, 1:5], row.names = FALSE, escape = FALSE, format = "latex", digits = 2)
+
+df1 <- kable_styling(df1, bootstrap_options = c("hover", "condensed", "responsive"), full_width = FALSE, font_size = 10, latex_options = "HOLD_position")
+
+df1
+
+```
+
+&nbsp;
+
+Con este cuadro de datos podemos calcular fácilmente parámetros sobre la actividad vocal, como por ejemplo el numero de vocalizaciones por archivo:
+```{r}
+
+tapply(lbh_selec_reference$sound.files, lbh_selec_reference$sound.files, length)
 
 ```
 
 &nbsp;
 
 
+### Vocalizaciones de 55 kHz en prueba de jaula (con borucha)
 
-Las rutinas se pueden correr usando el argumento `parallel`, el cual se encuentra en varias de las funciones mostradas. Este define el número de núcleos de la computadora ("cores") que se usarán para correr las diferentes funciones. Valores mayores a uno paralelizan las rutinas (corren varias tareas a la vez), reduciendo el tiempo de análisis.
+Detección con umbrales de energía:    
+
+```{r, eval = FALSE}
+
+# detectar
+deteccion <- energy_detector(threshold = 2.5, min.duration = 1, ssmooth = 1, hold.time = 3, path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(35, 90), max.duration = 200, path = ruta_archivos)
+
+```
+
+Medición de parámetros acústicos para el *Random Forest*:
+```{r, eval = FALSE}
+
+# medir parametros acústicos
+parametros_acusticos <- spectro_analysis(deteccion, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 1, path = ruta_archivos)
+
+```
+
+Clasificación con *Random Forest*:
+```{r, eval = FALSE}
+
+# bajar modelo de random forest del repositorio de figshare
+download.file(url = "https://figshare.com/ndownloader/files/31475096", destfile = "modelo_random_forest_55_kHz_prueba_de_jaula.RDS")
+
+# leer el modelo 
+clasificador_rf <- readRDS("modelo_random_forest_55_kHz_prueba_de_jaula.RDS")
+
+# aplicarlo sobre las detecciones nuevas
+deteccion$clase <-predict(object = clasificador_rf, data = parametros_acusticos)$predictions
+
+# remover los sonidos clasificados como ruido de fondo 
+detecion_filtrada <- deteccion[deteccion$clase == "true.positive", ]
+
+```
+
+
+### Vocalizaciones de 22 kHz en prueba de campo abierto (sin borucha)
+
+Detección con umbrales de energía:    
+
+```{r, eval = FALSE}
+
+# detectar
+deteccion <-  energy_detector(files =  unique(split_sels$sound.files), threshold = 2, min.duration = 2, ssmooth = 17, hold.time = 25, path = .Options$warbleR$path, thinning = 0.5, parallel = 1, bp = c(20, 30), max.duration = 3000, path = ruta_archivos)
+
+```
+
+Medición de parámetros acústicos para el *Random Forest*:
+```{r, eval = FALSE}
+
+# medir parametros acústicos
+parametros_acusticos <- spectro_analysis(deteccion, bp = c(20, 30), fast = TRUE, ovlp = 70, parallel = 1, path = ruta_archivos)
+
+```
+
+Clasificación con *Random Forest*:
+```{r, eval = FALSE}
+
+# bajar modelo de random forest del repositorio de figshare
+download.file(url = "https://figshare.com/ndownloader/files/31475099", destfile = "modelo_random_forest_55_kHz_prueba_de_jaula.RDS")
+
+# leer el modelo 
+clasificador_rf <- readRDS("modelo_random_forest_22_kHz_campo_abierto.RDS")
+
+# aplicarlo sobre las detecciones nuevas
+deteccion$clase <-predict(object = clasificador_rf, data = parametros_acusticos)$predictions
+
+# remover los sonidos clasificados como ruido de fondo 
+detecion_filtrada <- deteccion[deteccion$clase == "true.positive", ]
+
+```
+
+---
+
+Las rutinas se pueden acelerar usando el argumento `parallel`, el cual se encuentra en varias de las funciones mostradas. Este argumento define el número de núcleos de la computadora ("cores") que se usarán para correr las diferentes funciones. Valores mayores a uno paralelizan las rutinas (i.e. corren varias tareas a la vez), reduciendo el tiempo de análisis.
+ 
  
 ---
 

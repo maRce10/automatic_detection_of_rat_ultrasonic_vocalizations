@@ -249,6 +249,82 @@ datatable(wi, editable = list(
 ```
 
 
+# ALIVIO project
+
+# Format no-bedding recording and annotations
+```{r include=FALSE}
+
+cns_dat <- consolidate(path = "~/Downloads/alivio/")
+
+#sound files found at
+ "~/Dropbox/Recordings/ratas_cin/recs/experimento_alivio/"
+ 
+ source("~/Dropbox/R_package_testing/warbleR/warbleR/R/fix_wavs.R")
+ source("~/Dropbox/R_package_testing/warbleR/warbleR/R/pblapply_wrblr_int.R")
+ fix_wavs(samp.rate = 200, bit.depth = 16)
+ 
+  warbleR_options(wav.path = "~/Dropbox/Recordings/ratas_cin/recs/experimento_alivio/converted_sound_files/") 
+ 
+ 
+```
+
+
+```{r read manual selections no bedding, eval = FALSE}
+
+source("~/Dropbox/R_package_testing/Rraven/Rraven/R/imp_raven.R")
+mnl_sls <- imp_raven(path = "./data/raw/alivio_annotations", warbler.format = TRUE, all.data = TRUE, name.from.file = TRUE, ext.case = "lower", unread = TRUE)
+
+unread <- mnl_sls$unread_files
+mnl_sls <- mnl_sls$selections
+
+unique(mnl_sls$sound.files)
+
+
+wi <- wav_info()
+unique(wi$sound.files)
+
+cs <- check_sels(mnl_sls)
+
+mnl_sls <- mnl_sls[cs$check.res == "OK", ] 
+
+# export raven file to double check
+# exp_raven(mnl_sls, path = "./data/processed", file.name = "pooled_manual_annotations", sound.file.path = .Options$warbleR$path)
+
+merged_overlaps <- function(X){
+  
+  # merged overlapping selections
+  ov_sls <- overlapping_sels(X)
+  
+  ov_sls <- do.call(rbind, lapply(unique(ov_sls$ovlp.sels), function(x){
+         
+    if (!is.na(x)){
+       
+       Y <- ov_sls[ov_sls$ovlp.sels == x & !is.na(ov_sls$ovlp.sels), ]
+       Y$end[1] <- max(Y$end)
+       Y$bottom.freq[1] <- min(Y$bottom.freq)
+       Y$top.freq[1] <- max(Y$top.freq)
+       Y <- Y[1, ]
+       } else
+        Y <- ov_sls[is.na(ov_sls$ovlp.sels), ]
+      return(Y)
+  }))
+  
+  ov_sls$ovlp.sels <- NULL
+   
+  return(ov_sls) 
+ 
+}
+
+fix_sls <- merged_overlaps(mnl_sls)
+
+fix_sls_spctr <- spectro_analysis(fix_sls, fast = TRUE)
+fix_sls$peak.freq <- fix_sls_spctr$meanpeakf
+
+write.csv(x = fix_sls, file = "./data/processed/annotations_22kHz_alivio.csv", row.names = FALSE)
+
+```
+
+
 ---
 
 <font size="4">Session information</font>

@@ -1,0 +1,115 @@
+---
+title: <center><font size="6"><b>Detecting 22 kHz USVs with bedding</b></font></center>
+subtitle: <center><font size="4"><b>PROJECTO ALIVIO</b></font></center>
+author: <center><font size="4"><a href="http://marceloarayasalas.weebly.com/">Marcelo Araya-Salas, PhD</a></font></center>
+date: <center>`r format(Sys.Date(), "%d-%m-%Y")`</center>
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    df_print: kable
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+fontsize: 12pt 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages, message = FALSE, warning = FALSE, echo = FALSE, eval = TRUE, include = FALSE}
+
+## add 'developer/' to packages to be installed from github
+x <- c("devtools", "maRce10/warbleR", "bioacoustics", "pbapply", "Rraven", "parallel", "viridis", "rfigshare", "svMisc", "readxl", "ranger", "kableExtra", "DT", "maRce10/ohun", "ggplot2")
+
+aa <- lapply(x, function(y) {
+  
+  # get pakage name
+  pkg <- strsplit(y, "/")[[1]]
+  pkg <- pkg[length(pkg)]
+  
+  # check if installed, if not then install 
+  if (!pkg %in% installed.packages()[,"Package"])  {
+
+      if (grepl("/", y))  devtools::install_github(y, force = TRUE) else
+    install.packages(y) 
+    }
+
+  # load package
+  try(require(pkg, character.only = T), silent = T)
+})
+
+```
+
+```{r functions and global parameters, eval = TRUE, echo = FALSE}
+
+warbleR_options(
+  wav.path = "~/Dropbox/Recordings/ratas_cin/recs/experimento_alivio/2nd_round/converted_sound_files/"
+)
+
+opts_knit$set(root.dir = "..")
+
+```
+
+```{r, eval = FALSE}
+
+fix_wavs(samp.rate = 200, bit.depth = 16)
+
+```
+
+
+```{r}
+
+detection <- energy_detector(path = .Options$warbleR$path, 
+     thinning = 0.5, bp = c(35, 90), smooth = 1, threshold = 2.5, 
+     hold.time = 3, min.duration = 1, max.duration = 200, 
+     parallel = 1)
+
+saveRDS(detection, "./data/processed/detection_55kHz_with_bedding_alivio_round2.RDS")
+
+```
+
+# Random forest classification
+```{r measure acoustic parameters and run random forest, eval = FALSE}
+
+detection <- readRDS("./data/processed/detection_55kHz_with_bedding_alivio_round2.RDS")
+
+# measure spectrographic parameters
+spectral_parameters <- spectro_analysis(detection, bp = c(35, 85), fast = TRUE, ovlp = 70, parallel = 10)
+
+# leer el modelo 
+rf_model <- readRDS("./data/processed/random_forest_55kHz_with_bedding.RDS")
+
+sapply(spectral_parameters, function(x) sum(is.na(x)))
+
+detection <- detection[!is.na(spectral_parameters$meandom), ]
+
+spectral_parameters <- spectral_parameters[!is.na(spectral_parameters$meandom), ]
+
+# aplicarlo sobre las detecciones nuevas
+detection$class <-predict(object = rf_model, data = spectral_parameters)$predictions
+
+# remover los sonidos clasificados como ruido de fondo 
+filtered_detection <- detection[detection$class == "true.positive", ]
+
+saveRDS(filtered_detection, "./data/processed/random_forest_filtered_detection_55kHz_with_bedding_alivio_round2.RDS")  
+
+write.csv(filtered_detection, "./data/processed/filtered_detection_55kHz_with_bedding_alivio_round2.csv", row.names = FALSE)
+
+counts <- aggregate(selec ~ sound.files, filtered_detection, length)
+names(counts)[2] <- "55khz.call.count"
+
+write.csv(counts, "./data/processed/counts_per_sound_files_detection_55kHz_with_bedding_alivio_round2.csv", row.names = FALSE)
+
+```
+
+
+---
+
+<font size="4">Session information</font>
+
+```{r session info, echo=F, eval = TRUE}
+
+sessionInfo()
+
+```
